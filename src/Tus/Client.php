@@ -318,6 +318,7 @@ class Client extends AbstractTus
             'Upload-Key' => $key,
             'Upload-Checksum' => $this->getUploadChecksumHeader(),
             'Upload-Metadata' => 'filename ' . base64_encode($this->fileName),
+            'Tus-Resumable' => self::TUS_PROTOCOL_VERSION,
         ];
 
         $headers += $this->getAdditionalHeaders();
@@ -353,6 +354,7 @@ class Client extends AbstractTus
             'Upload-Checksum' => $this->getUploadChecksumHeader(),
             'Upload-Metadata' => 'filename ' . base64_encode($this->fileName),
             'Upload-Concat' => self::UPLOAD_TYPE_FINAL . ';' . implode(' ', $partials),
+            'Tus-Resumable' => self::TUS_PROTOCOL_VERSION,
         ];
         $headers += $this->getAdditionalHeaders();
 
@@ -462,6 +464,7 @@ class Client extends AbstractTus
             'Content-Type' => 'application/offset+octet-stream',
             'Content-Length' => strlen($data),
             'Upload-Checksum' => $this->getUploadChecksumHeader(),
+            'Tus-Resumable' => self::TUS_PROTOCOL_VERSION,
         ];
 
         if ($this->isPartial()) {
