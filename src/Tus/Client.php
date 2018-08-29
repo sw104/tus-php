@@ -232,6 +232,18 @@ class Client extends AbstractTus
     }
 
     /**
+     * Set partial offset.
+     *
+     * @return Client
+     */
+    public function setPartialOffset(int $offset) : self
+    {
+        $this->partialOffset = $offset;
+
+        return $this;
+    } 
+
+    /**
      * Get partial offset.
      *
      * @return int
@@ -250,7 +262,7 @@ class Client extends AbstractTus
      */
     public function seek(int $offset) : self
     {
-        $this->partialOffset = $offset;
+        $this->setPartialOffset($offset);
 
         $this->partial();
 
@@ -272,8 +284,9 @@ class Client extends AbstractTus
         $key   = $this->getKey();
 
         try {
-            // Check if this upload exists with HEAD request.
-            $this->sendHeadRequest($key);
+            // Check if this upload exists with HEAD request and how much the server has.
+            $offset = $this->sendHeadRequest($key);
+            $this->setPartialOffset($offset);
         } catch (FileException | ClientException $e) {
             $this->create($key);
         } catch (ConnectException $e) {
@@ -336,6 +349,8 @@ class Client extends AbstractTus
         if (HttpResponse::HTTP_CREATED !== $statusCode) {
             throw new FileException('Unable to create resource.');
         }
+
+        $location = $response->getHeader("location");
     }
 
     /**
@@ -464,6 +479,7 @@ class Client extends AbstractTus
             'Content-Type' => 'application/offset+octet-stream',
             'Content-Length' => strlen($data),
             'Upload-Checksum' => $this->getUploadChecksumHeader(),
+            'Upload-Offset' => $this->getPartialOffset(),
             'Tus-Resumable' => self::TUS_PROTOCOL_VERSION,
         ];
 
@@ -509,7 +525,7 @@ class Client extends AbstractTus
     {
         $file   = new File;
         $handle = $file->open($this->getFilePath(), $file::READ_BINARY);
-        $offset = $this->partialOffset;
+        $offset = $this->getPartialOffset();
 
         if ($offset < 0) {
             $fileMeta = $this->getCache()->get($key);
