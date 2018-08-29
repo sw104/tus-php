@@ -41,19 +41,24 @@ class Client extends AbstractTus
     /** @var string */
     protected $checksumAlgorithm = 'sha256';
 
+    /** @var array */
+    protected $additionalHeaders;
+
     /**
      * Client constructor.
      *
      * @param string           $baseUrl
      * @param Cacheable|string $cacheAdapter
+     * @param array            $additionalHeaders
      */
-    public function __construct(string $baseUrl, $cacheAdapter = 'file')
+    public function __construct(string $baseUrl, $cacheAdapter = 'file', $additionalHeaders = array())
     {
         $this->client = new GuzzleClient([
             'base_uri' => $baseUrl,
         ]);
 
         $this->setCache($cacheAdapter);
+        $this->setAdditionalHeaders($additionalHeaders);
     }
 
     /**
@@ -77,7 +82,7 @@ class Client extends AbstractTus
 
         return $this;
     }
-
+    
     /**
      * Get file path.
      *
@@ -194,6 +199,28 @@ class Client extends AbstractTus
         return $this->checksumAlgorithm;
     }
 
+
+    /**
+     * Set additional headers.
+     * @return Client
+     */
+    public function setAdditionalHeaders(array $headers) : self
+    {
+        $this->additionalHeaders = $headers;
+
+        return $this;
+    }
+
+    /**
+     * Get additional headers.
+     *
+     * @return array
+     */
+    public function getAdditionalHeaders() : array
+    {
+        return $this->additionalHeaders;
+    }
+
     /**
      * Check if this is a partial upload request.
      *
@@ -293,6 +320,8 @@ class Client extends AbstractTus
             'Upload-Metadata' => 'filename ' . base64_encode($this->fileName),
         ];
 
+        $headers += $this->getAdditionalHeaders();
+
         if ($this->isPartial()) {
             $headers += ['Upload-Concat' => 'partial'];
         }
@@ -318,14 +347,17 @@ class Client extends AbstractTus
      */
     public function concat(string $key, ...$partials) : string
     {
+        $headers = [
+            'Upload-Length' => $this->fileSize,
+            'Upload-Key' => $key,
+            'Upload-Checksum' => $this->getUploadChecksumHeader(),
+            'Upload-Metadata' => 'filename ' . base64_encode($this->fileName),
+            'Upload-Concat' => self::UPLOAD_TYPE_FINAL . ';' . implode(' ', $partials),
+        ];
+        $headers += $this->getAdditionalHeaders();
+
         $response = $this->getClient()->post($this->apiPath, [
-            'headers' => [
-                'Upload-Length' => $this->fileSize,
-                'Upload-Key' => $key,
-                'Upload-Checksum' => $this->getUploadChecksumHeader(),
-                'Upload-Metadata' => 'filename ' . base64_encode($this->fileName),
-                'Upload-Concat' => self::UPLOAD_TYPE_FINAL . ';' . implode(' ', $partials),
-            ],
+            $headers,
         ]);
 
         $data       = json_decode($response->getBody(), true);
@@ -435,6 +467,8 @@ class Client extends AbstractTus
         if ($this->isPartial()) {
             $headers += ['Upload-Concat' => self::UPLOAD_TYPE_PARTIAL];
         }
+
+        $headers += $this->getAdditionalHeaders();
 
         try {
             $response = $this->getClient()->patch($this->apiPath . '/' . $key, [
