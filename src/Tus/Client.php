@@ -202,6 +202,7 @@ class Client extends AbstractTus
 
     /**
      * Set additional headers.
+     * 
      * @return Client
      */
     public function setAdditionalHeaders(array $headers) : self
@@ -289,6 +290,9 @@ class Client extends AbstractTus
             $this->setPartialOffset($offset);
         } catch (FileException | ClientException $e) {
             $this->create($key);
+            // Get server-generated key.
+            $key = $this->getKey();
+
         } catch (ConnectException $e) {
             throw new ConnectionException("Couldn't connect to server.");
         }
@@ -350,7 +354,8 @@ class Client extends AbstractTus
             throw new FileException('Unable to create resource.');
         }
 
-        $location = $response->getHeader("location");
+        // Set key to that supplied by server (strip everything known from location header).
+        $this->setKey(str_replace($this->client->getConfig('base_uri') . $this->apiPath . "/", "", (string) current($response->getHeader("location"))));
     }
 
     /**
