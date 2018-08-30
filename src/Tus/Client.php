@@ -8,6 +8,7 @@ use TusPhp\Exception\Exception;
 use TusPhp\Exception\FileException;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Exception\ServerException;
 use TusPhp\Exception\ConnectionException;
 use GuzzleHttp\Exception\ConnectException;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
@@ -288,7 +289,7 @@ class Client extends AbstractTus
             // Check if this upload exists with HEAD request and how much the server has.
             $offset = $this->sendHeadRequest($key);
             $this->setPartialOffset($offset);
-        } catch (FileException | ClientException $e) {
+        } catch (FileException | ClientException | ServerException $e) {
             $this->create($key);
             // Get server-generated key.
             $key = $this->getKey();
@@ -404,11 +405,15 @@ class Client extends AbstractTus
      */
     public function delete(string $key)
     {
+        $headers = [
+            'Tus-Resumable' => self::TUS_PROTOCOL_VERSION,
+        ];
+
+        $headers += $this->getAdditionalHeaders();
+
         try {
             $this->getClient()->delete($this->apiPath . '/' . $key, [
-                'headers' => [
-                    'Tus-Resumable' => self::TUS_PROTOCOL_VERSION,
-                ],
+                'headers' => $headers,
             ]);
         } catch (ClientException $e) {
             $statusCode = $e->getResponse()->getStatusCode();
@@ -454,7 +459,15 @@ class Client extends AbstractTus
      */
     protected function sendHeadRequest(string $key) : int
     {
-        $response = $this->getClient()->head($this->apiPath . '/' . $key);
+        $headers = [
+            'Tus-Resumable' => self::TUS_PROTOCOL_VERSION,
+        ];
+
+        $headers += $this->getAdditionalHeaders();
+
+        $response = $this->getClient()->head($this->apiPath . '/' . $key, [
+                'headers' => $headers,
+            ]);
 
         $statusCode = $response->getStatusCode();
 
