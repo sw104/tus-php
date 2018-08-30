@@ -33,7 +33,7 @@ class Client extends AbstractTus
     protected $checksum;
 
     /** @var int */
-    protected $partialOffset = -1;
+    protected $partialOffset = 0;
 
     /** @var bool */
     protected $partial = false;
@@ -531,11 +531,6 @@ class Client extends AbstractTus
         $file   = new File;
         $handle = $file->open($this->getFilePath(), $file::READ_BINARY);
         $offset = $this->getPartialOffset();
-
-        if ($offset < 0) {
-            $fileMeta = $this->getCache()->get($key);
-            $offset   = $fileMeta['offset'];
-        }
 
         $file->seek($handle, $offset);
 
