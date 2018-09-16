@@ -43,7 +43,7 @@ class Client extends AbstractTus
     protected $checksumAlgorithm = 'sha256';
 
     /** @var array */
-    protected $additionalHeaders;
+    protected $additionalHeaders = [];
 
     /**
      * Client constructor.
@@ -203,7 +203,7 @@ class Client extends AbstractTus
 
     /**
      * Set additional headers.
-     * 
+     *
      * @return Client
      */
     public function setAdditionalHeaders(array $headers) : self
@@ -243,7 +243,7 @@ class Client extends AbstractTus
         $this->partialOffset = $offset;
 
         return $this;
-    } 
+    }
 
     /**
      * Get partial offset.
@@ -290,10 +290,8 @@ class Client extends AbstractTus
             $offset = $this->sendHeadRequest($key);
             $this->setPartialOffset($offset);
         } catch (FileException | ClientException | ServerException $e) {
-            $this->create($key);
-            // Get server-generated key.
-            $key = $this->getKey();
-
+            // Create upload and get server-generated key.
+            $key = $this->create($key);
         } catch (ConnectException $e) {
             throw new ConnectionException("Couldn't connect to server.");
         }
@@ -327,7 +325,7 @@ class Client extends AbstractTus
      *
      * @throws FileException
      *
-     * @return void
+     * @return string
      */
     public function create(string $key)
     {
@@ -356,7 +354,8 @@ class Client extends AbstractTus
         }
 
         // Set key to that supplied by server (strip everything known from location header).
-        $this->setKey(str_replace($this->client->getConfig('base_uri') . $this->apiPath . "/", "", (string) current($response->getHeader("location"))));
+        $this->setKey(str_replace($this->getClient()->getConfig('base_uri') . $this->apiPath . '/', '', (string) current($response->getHeader('location'))));
+        return $this->getKey();
     }
 
     /**
@@ -380,7 +379,7 @@ class Client extends AbstractTus
         $headers += $this->getAdditionalHeaders();
 
         $response = $this->getClient()->post($this->apiPath, [
-            $headers,
+            'headers' => $headers,
         ]);
 
         $data       = json_decode($response->getBody(), true);
@@ -544,6 +543,19 @@ class Client extends AbstractTus
         $file   = new File;
         $handle = $file->open($this->getFilePath(), $file::READ_BINARY);
         $offset = $this->getPartialOffset();
+
+        if ($offset == 0) {
+            $fileMeta = $this->getCache()->get($key);
+            $offset   = $fileMeta['offset'];
+
+            // Make sure offset is sensible.
+            if ( ! is_numeric($offset)) {
+                $offset = 0;
+            }
+
+            $this->setPartialOffset($offset);
+        }
+
 
         $file->seek($handle, $offset);
 

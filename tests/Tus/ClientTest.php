@@ -466,13 +466,18 @@ class ClientTest extends TestCase
     public function it_sends_a_head_request()
     {
         $checksum     = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
+        $additionalHeaders   = ['Test-Header' => 'Test Content',];
+        $headers      = ['Tus-Resumable' => '1.0.0',];
+        $headers      += $additionalHeaders;
         $guzzleMock   = m::mock(Client::class);
         $responseMock = m::mock(Response::class);
 
         $guzzleMock
             ->shouldReceive('head')
             ->once()
-            ->with('/files/' . $checksum)
+            ->with('/files/' . $checksum, [
+                'headers' => $headers,
+            ])
             ->andReturn($responseMock);
 
         $responseMock
@@ -491,7 +496,7 @@ class ClientTest extends TestCase
             ->with('upload-offset')
             ->andReturn([100]);
 
-        $this->assertEquals(100, $this->tusClientMock->sendHeadRequest($checksum));
+        $this->assertEquals(100, $this->tusClientMock->setAdditionalHeaders($additionalHeaders)->sendHeadRequest($checksum));
     }
 
     /**
@@ -505,14 +510,18 @@ class ClientTest extends TestCase
     public function it_throws_file_exception_in_head_request()
     {
         $checksum = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
-
+        $additionalHeaders    = ['Test-Header' => 'Test Content',];
+        $headers      = ['Tus-Resumable' => '1.0.0',];
+        $headers      += $additionalHeaders;
         $guzzleMock   = m::mock(Client::class);
         $responseMock = m::mock(Response::class);
 
         $guzzleMock
             ->shouldReceive('head')
             ->once()
-            ->with('/files/' . $checksum)
+            ->with('/files/' . $checksum, [
+                'headers' => $headers,
+            ])
             ->andReturn($responseMock);
 
         $responseMock
@@ -525,7 +534,7 @@ class ClientTest extends TestCase
             ->once()
             ->andReturn($guzzleMock);
 
-        $this->tusClientMock->sendHeadRequest($checksum);
+        $this->tusClientMock->setAdditionalHeaders($additionalHeaders)->sendHeadRequest($checksum);
     }
 
     /**
@@ -538,9 +547,18 @@ class ClientTest extends TestCase
      */
     public function it_throws_file_exception_for_corrupt_data_in_patch_request()
     {
-        $bytes    = 12;
-        $data     = 'Hello World!';
-        $checksum = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
+        $bytes      = 12;
+        $data       = 'Hello World!';
+        $checksum   = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
+        $headers    = [
+            'Content-Type' => 'application/offset+octet-stream',
+            'Content-Length' => strlen($data),
+            'Upload-Checksum' => $checksum,
+            'Upload-Offset' => 0,
+            'Tus-Resumable' => '1.0.0',
+        ];
+        $additionalHeaders  = ['Test-Header' => 'Test Content',];
+        $headers    += $additionalHeaders;
 
         $this->tusClientMock
             ->shouldReceive('getData')
@@ -578,15 +596,11 @@ class ClientTest extends TestCase
             ->once()
             ->with('/files/' . $checksum, [
                 'body' => $data,
-                'headers' => [
-                    'Content-Type' => 'application/offset+octet-stream',
-                    'Content-Length' => strlen($data),
-                    'Upload-Checksum' => $checksum,
-                ],
+                'headers' => $headers,
             ])
             ->andThrow($clientExceptionMock);
 
-        $this->tusClientMock->sendPatchRequest($checksum, $bytes);
+        $this->tusClientMock->setAdditionalHeaders($additionalHeaders)->sendPatchRequest($checksum, $bytes);
     }
 
     /**
@@ -599,9 +613,18 @@ class ClientTest extends TestCase
      */
     public function it_throws_connection_exception_if_user_aborts_connection_during_patch_request()
     {
-        $bytes    = 12;
-        $data     = 'Hello World!';
-        $checksum = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
+        $bytes      = 12;
+        $data       = 'Hello World!';
+        $checksum   = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
+        $headers    = [
+            'Content-Type' => 'application/offset+octet-stream',
+            'Content-Length' => strlen($data),
+            'Upload-Checksum' => $checksum,
+            'Upload-Offset' => 0,
+            'Tus-Resumable' => '1.0.0',
+        ];
+        $additionalHeaders  = ['Test-Header' => 'Test Content',];
+        $headers    += $additionalHeaders;
 
         $this->tusClientMock
             ->shouldReceive('getData')
@@ -639,16 +662,12 @@ class ClientTest extends TestCase
             ->once()
             ->with('/files/' . $checksum, [
                 'body' => $data,
-                'headers' => [
-                    'Content-Type' => 'application/offset+octet-stream',
-                    'Content-Length' => strlen($data),
-                    'Upload-Checksum' => $checksum,
-                ],
+                'headers' => $headers,
             ])
             ->andThrow($clientExceptionMock);
 
 
-        $this->tusClientMock->sendPatchRequest($checksum, $bytes);
+        $this->tusClientMock->setAdditionalHeaders($additionalHeaders)->sendPatchRequest($checksum, $bytes);
     }
 
     /**
@@ -662,9 +681,18 @@ class ClientTest extends TestCase
      */
     public function it_throws_exception_for_other_exceptions_in_patch_request()
     {
-        $bytes    = 12;
-        $data     = 'Hello World!';
-        $checksum = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
+        $bytes      = 12;
+        $data       = 'Hello World!';
+        $checksum   = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
+        $headers    = [
+            'Content-Type' => 'application/offset+octet-stream',
+            'Content-Length' => strlen($data),
+            'Upload-Checksum' => $checksum,
+            'Upload-Offset' => 0,
+            'Tus-Resumable' => '1.0.0',
+        ];
+        $additionalHeaders  = ['Test-Header' => 'Test Content',];
+        $headers    += $additionalHeaders;
 
         $this->tusClientMock
             ->shouldReceive('getData')
@@ -707,15 +735,11 @@ class ClientTest extends TestCase
             ->once()
             ->with('/files/' . $checksum, [
                 'body' => $data,
-                'headers' => [
-                    'Content-Type' => 'application/offset+octet-stream',
-                    'Content-Length' => strlen($data),
-                    'Upload-Checksum' => $checksum,
-                ],
+                'headers' => $headers,
             ])
             ->andThrow($clientExceptionMock);
 
-        $this->tusClientMock->sendPatchRequest($checksum, $bytes);
+        $this->tusClientMock->setAdditionalHeaders($additionalHeaders)->sendPatchRequest($checksum, $bytes);
     }
 
     /**
@@ -728,9 +752,18 @@ class ClientTest extends TestCase
      */
     public function it_throws_connection_exception_if_it_cannot_connect_to_server()
     {
-        $bytes    = 12;
-        $data     = 'Hello World!';
-        $checksum = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
+        $bytes      = 12;
+        $data       = 'Hello World!';
+        $checksum   = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
+        $headers    = [
+            'Content-Type' => 'application/offset+octet-stream',
+            'Content-Length' => strlen($data),
+            'Upload-Checksum' => $checksum,
+            'Upload-Offset' => 0,
+            'Tus-Resumable' => '1.0.0',
+        ];
+        $additionalHeaders  = ['Test-Header' => 'Test Content',];
+        $headers    += $additionalHeaders;
 
         $this->tusClientMock
             ->shouldReceive('getData')
@@ -755,16 +788,12 @@ class ClientTest extends TestCase
             ->once()
             ->with('/files/' . $checksum, [
                 'body' => $data,
-                'headers' => [
-                    'Content-Type' => 'application/offset+octet-stream',
-                    'Content-Length' => strlen($data),
-                    'Upload-Checksum' => $checksum,
-                ],
+                'headers' => $headers,
             ])
             ->andThrow(m::mock(ConnectException::class));
 
 
-        $this->tusClientMock->sendPatchRequest($checksum, $bytes);
+        $this->tusClientMock->setAdditionalHeaders($additionalHeaders)->sendPatchRequest($checksum, $bytes);
     }
 
     /**
@@ -774,9 +803,18 @@ class ClientTest extends TestCase
      */
     public function it_sends_a_patch_request()
     {
-        $bytes    = 12;
-        $data     = 'Hello World!';
-        $checksum = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
+        $bytes      = 12;
+        $data       = 'Hello World!';
+        $checksum   = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
+        $headers    = [
+            'Content-Type' => 'application/offset+octet-stream',
+            'Content-Length' => strlen($data),
+            'Upload-Checksum' => $checksum,
+            'Upload-Offset' => 0,
+            'Tus-Resumable' => '1.0.0',
+        ];
+        $additionalHeaders  = ['Test-Header' => 'Test Content',];
+        $headers    += $additionalHeaders;
 
         $this->tusClientMock
             ->shouldReceive('getData')
@@ -802,11 +840,7 @@ class ClientTest extends TestCase
             ->once()
             ->with('/files/' . $checksum, [
                 'body' => $data,
-                'headers' => [
-                    'Content-Type' => 'application/offset+octet-stream',
-                    'Content-Length' => strlen($data),
-                    'Upload-Checksum' => $checksum,
-                ],
+                'headers' => $headers,
             ])
             ->andReturn($responseMock);
 
@@ -816,7 +850,7 @@ class ClientTest extends TestCase
             ->with('upload-offset')
             ->andReturn([$bytes]);
 
-        $this->assertEquals($bytes, $this->tusClientMock->sendPatchRequest($checksum, $bytes));
+        $this->assertEquals($bytes, $this->tusClientMock->setAdditionalHeaders($additionalHeaders)->sendPatchRequest($checksum, $bytes));
     }
 
     /**
@@ -826,10 +860,19 @@ class ClientTest extends TestCase
      */
     public function it_sends_a_partial_patch_request()
     {
-        $bytes    = 12;
-        $data     = 'Hello World!';
-        $checksum = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
-
+        $bytes      = 12;
+        $data       = 'Hello World!';
+        $checksum   = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
+        $headers    = [
+                'Content-Type' => 'application/offset+octet-stream',
+                'Content-Length' => mb_strlen($data),
+                'Upload-Checksum' => $checksum,
+                'Upload-Concat' => 'partial',
+                'Upload-Offset' => 0,
+                'Tus-Resumable' => '1.0.0',
+        ];
+        $additionalHeaders  = ['Test-Header' => 'Test Content',];
+        $headers    += $additionalHeaders;
         $this->tusClientMock
             ->shouldReceive('getData')
             ->once()
@@ -859,12 +902,7 @@ class ClientTest extends TestCase
             ->once()
             ->with('/files/' . $checksum, [
                 'body' => $data,
-                'headers' => [
-                    'Content-Type' => 'application/offset+octet-stream',
-                    'Content-Length' => mb_strlen($data),
-                    'Upload-Checksum' => $checksum,
-                    'Upload-Concat' => 'partial',
-                ],
+                'headers' => $headers,
             ])
             ->andReturn($responseMock);
 
@@ -874,7 +912,7 @@ class ClientTest extends TestCase
             ->with('upload-offset')
             ->andReturn([$bytes]);
 
-        $this->assertEquals($bytes, $this->tusClientMock->sendPatchRequest($checksum, $bytes));
+        $this->assertEquals($bytes, $this->tusClientMock->setAdditionalHeaders($additionalHeaders)->sendPatchRequest($checksum, $bytes));
     }
 
     /**
@@ -888,6 +926,15 @@ class ClientTest extends TestCase
         $checksum     = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
         $filePath     = __DIR__ . '/../Fixtures/empty.txt';
         $fileName     = 'file.txt';
+        $additionalHeaders    = ['Test-Header' => 'Test Content',];
+        $headers      = [
+            'Upload-Length' => filesize($filePath),
+            'Upload-Key' => $key,
+            'Upload-Checksum' => 'sha256 ' . base64_encode($checksum),
+            'Upload-Metadata' => 'filename ' . base64_encode($fileName),
+            'Tus-Resumable' => '1.0.0',
+        ];
+        $headers      += $additionalHeaders;
         $guzzleMock   = m::mock(Client::class);
         $responseMock = m::mock(Response::class);
 
@@ -903,7 +950,7 @@ class ClientTest extends TestCase
 
         $this->tusClientMock
             ->shouldReceive('getClient')
-            ->once()
+            ->twice()
             ->andReturn($guzzleMock);
 
         $this->tusClientMock->file($filePath, $fileName);
@@ -912,16 +959,23 @@ class ClientTest extends TestCase
             ->shouldReceive('post')
             ->once()
             ->with('/files', [
-                'headers' => [
-                    'Upload-Length' => filesize($filePath),
-                    'Upload-Key' => $key,
-                    'Upload-Checksum' => 'sha256 ' . base64_encode($checksum),
-                    'Upload-Metadata' => 'filename ' . base64_encode($fileName),
-                ],
+                'headers' => $headers,
             ])
             ->andReturn($responseMock);
 
-        $this->assertEmpty($this->tusClientMock->create($key));
+        $guzzleMock
+            ->shouldReceive('getConfig')
+            ->once()
+            ->with('base_uri')
+            ->andReturn(__DIR__);
+
+        $responseMock
+            ->shouldReceive('getHeader')
+            ->once()
+            ->with('location')
+            ->andReturn(['location' => $filePath,]);
+
+        $this->assertEquals($filePath, $this->tusClientMock->setAdditionalHeaders($additionalHeaders)->create($key));
     }
 
     /**
@@ -935,6 +989,16 @@ class ClientTest extends TestCase
         $checksum     = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
         $filePath     = __DIR__ . '/../Fixtures/empty.txt';
         $fileName     = 'file.txt';
+        $additionalHeaders    = ['Test-Header' => 'Test Content',];
+        $headers      = [
+            'Upload-Length' => filesize($filePath),
+            'Upload-Key' => $key,
+            'Upload-Checksum' => 'sha256 ' . base64_encode($checksum),
+            'Upload-Metadata' => 'filename ' . base64_encode($fileName),
+            'Tus-Resumable' => '1.0.0',
+            'Upload-Concat' => 'partial',
+        ];
+        $headers      += $additionalHeaders;
         $guzzleMock   = m::mock(Client::class);
         $responseMock = m::mock(Response::class);
 
@@ -950,7 +1014,7 @@ class ClientTest extends TestCase
 
         $this->tusClientMock
             ->shouldReceive('getClient')
-            ->once()
+            ->twice()
             ->andReturn($guzzleMock);
 
         $this->tusClientMock
@@ -964,17 +1028,24 @@ class ClientTest extends TestCase
             ->shouldReceive('post')
             ->once()
             ->with('/files', [
-                'headers' => [
-                    'Upload-Length' => filesize($filePath),
-                    'Upload-Key' => $key,
-                    'Upload-Checksum' => 'sha256 ' . base64_encode($checksum),
-                    'Upload-Metadata' => 'filename ' . base64_encode($fileName),
-                    'Upload-Concat' => 'partial',
-                ],
+                'headers' => $headers,
             ])
             ->andReturn($responseMock);
 
-        $this->assertEmpty($this->tusClientMock->create($key));
+        $guzzleMock
+            ->shouldReceive('getConfig')
+            ->once()
+            ->with('base_uri')
+            ->andReturn(__DIR__);
+
+        $responseMock
+            ->shouldReceive('getHeader')
+            ->once()
+            ->with('location')
+            ->andReturn(['location' => $filePath,]);
+
+
+        $this->assertEquals($filePath, $this->tusClientMock->setAdditionalHeaders($additionalHeaders)->create($key));
     }
 
     /**
@@ -991,6 +1062,15 @@ class ClientTest extends TestCase
         $filePath     = __DIR__ . '/../Fixtures/empty.txt';
         $fileName     = 'file.txt';
         $checksum     = hash_file('sha256', $filePath);
+        $additionalHeaders    = ['Test-Header' => 'Test Content',];
+        $headers      = [
+            'Upload-Length' => filesize($filePath),
+            'Upload-Key' => $key,
+            'Upload-Checksum' => 'sha256 ' . base64_encode($checksum),
+            'Upload-Metadata' => 'filename ' . base64_encode($fileName),
+            'Tus-Resumable' => '1.0.0',
+        ];
+        $headers      += $additionalHeaders;
         $guzzleMock   = m::mock(Client::class);
         $responseMock = m::mock(Response::class);
 
@@ -1015,16 +1095,11 @@ class ClientTest extends TestCase
             ->shouldReceive('post')
             ->once()
             ->with('/files', [
-                'headers' => [
-                    'Upload-Length' => filesize($filePath),
-                    'Upload-Key' => $key,
-                    'Upload-Checksum' => 'sha256 ' . base64_encode($checksum),
-                    'Upload-Metadata' => 'filename ' . base64_encode($fileName),
-                ],
+                'headers' => $headers,
             ])
             ->andReturn($responseMock);
 
-        $this->tusClientMock->create($key);
+        $this->tusClientMock->setAdditionalHeaders($additionalHeaders)->create($key);
     }
 
     /**
@@ -1038,9 +1113,19 @@ class ClientTest extends TestCase
         $checksum     = '74f02d6da32082463e382f2274e85fd8eae3e81f739f8959abc91865656e3b3a';
         $filePath     = __DIR__ . '/../Fixtures/empty.txt';
         $fileName     = 'file.txt';
+        $partials     = ['/files/a', '/files/b', 'files/c'];
+        $additionalHeaders    = ['Test-Header' => 'Test Content',];
+        $headers      = [
+            'Upload-Length' => filesize($filePath),
+            'Upload-Key' => $key,
+            'Upload-Checksum' => 'sha256 ' . base64_encode($checksum),
+            'Upload-Metadata' => 'filename ' . base64_encode($fileName),
+            'Upload-Concat' => 'final;' . implode(' ', $partials),
+            'Tus-Resumable' => '1.0.0',
+        ];
+        $headers      += $additionalHeaders;
         $guzzleMock   = m::mock(Client::class);
         $responseMock = m::mock(Response::class);
-        $partials     = ['/files/a', '/files/b', 'files/c'];
 
         $responseMock
             ->shouldReceive('getStatusCode')
@@ -1072,19 +1157,13 @@ class ClientTest extends TestCase
             ->shouldReceive('post')
             ->once()
             ->with('/files', [
-                'headers' => [
-                    'Upload-Length' => filesize($filePath),
-                    'Upload-Key' => $key,
-                    'Upload-Checksum' => 'sha256 ' . base64_encode($checksum),
-                    'Upload-Metadata' => 'filename ' . base64_encode($fileName),
-                    'Upload-Concat' => 'final;' . implode(' ', $partials),
-                ],
+                'headers' => $headers,
             ])
             ->andReturn($responseMock);
 
         $this->assertEquals(
             $checksum,
-            $this->tusClientMock->concat($key, $partials[0], $partials[1], $partials[2])
+            $this->tusClientMock->setAdditionalHeaders($additionalHeaders)->concat($key, $partials[0], $partials[1], $partials[2])
         );
     }
 
@@ -1102,9 +1181,20 @@ class ClientTest extends TestCase
         $filePath     = __DIR__ . '/../Fixtures/empty.txt';
         $fileName     = 'file.txt';
         $checksum     = hash_file('sha256', $filePath);
+        $partials     = ['/files/a', '/files/b', 'files/c'];
+        $additionalHeaders    = ['Test-Header' => 'Test Content',];
+        $headers      = [
+            'Upload-Length' => filesize($filePath),
+            'Upload-Key' => $key,
+            'Upload-Checksum' => 'sha256 ' . base64_encode($checksum),
+            'Upload-Metadata' => 'filename ' . base64_encode($fileName),
+            'Upload-Concat' => 'final;' . implode(' ', $partials),
+            'Tus-Resumable' => '1.0.0',
+        ];
+        $headers      += $additionalHeaders;
         $guzzleMock   = m::mock(Client::class);
         $responseMock = m::mock(Response::class);
-        $partials     = ['/files/a', '/files/b', 'files/c'];
+
 
         $responseMock
             ->shouldReceive('getBody')
@@ -1132,17 +1222,11 @@ class ClientTest extends TestCase
             ->shouldReceive('post')
             ->once()
             ->with('/files', [
-                'headers' => [
-                    'Upload-Length' => filesize($filePath),
-                    'Upload-Key' => $key,
-                    'Upload-Checksum' => 'sha256 ' . base64_encode($checksum),
-                    'Upload-Metadata' => 'filename ' . base64_encode($fileName),
-                    'Upload-Concat' => 'final;' . implode(' ', $partials),
-                ],
+                'headers' => $headers,
             ])
             ->andReturn($responseMock);
 
-        $this->tusClientMock->concat($key, $partials[0], $partials[1], $partials[2]);
+        $this->tusClientMock->setAdditionalHeaders($additionalHeaders)->concat($key, $partials[0], $partials[1], $partials[2]);
     }
 
     /**
@@ -1157,9 +1241,20 @@ class ClientTest extends TestCase
     {
         $filePath     = __DIR__ . '/../Fixtures/empty.txt';
         $fileName     = 'file.txt';
+        $partials     = ['/files/a', '/files/b', 'files/c'];
+        $additionalHeaders    = ['Test-Header' => 'Test Content',];
+        $headers      = [
+            'Upload-Length' => filesize($filePath),
+            'Upload-Key' => '',
+            'Upload-Checksum' => 'sha256 ',
+            'Upload-Metadata' => 'filename ' . base64_encode($fileName),
+            'Upload-Concat' => 'final;' . implode(' ', $partials),
+            'Tus-Resumable' => '1.0.0',
+        ];
+        $headers      += $additionalHeaders;
         $guzzleMock   = m::mock(Client::class);
         $responseMock = m::mock(Response::class);
-        $partials     = ['/files/a', '/files/b', 'files/c'];
+
 
         $responseMock
             ->shouldReceive('getBody')
@@ -1187,17 +1282,11 @@ class ClientTest extends TestCase
             ->shouldReceive('post')
             ->once()
             ->with('/files', [
-                'headers' => [
-                    'Upload-Length' => filesize($filePath),
-                    'Upload-Key' => '',
-                    'Upload-Checksum' => 'sha256 ',
-                    'Upload-Metadata' => 'filename ' . base64_encode($fileName),
-                    'Upload-Concat' => 'final;' . implode(' ', $partials),
-                ],
+                'headers' => $headers,
             ])
             ->andReturn($responseMock);
 
-        $this->tusClientMock->concat('', $partials[0], $partials[1], $partials[2]);
+        $this->tusClientMock->setAdditionalHeaders($additionalHeaders)->concat('', $partials[0], $partials[1], $partials[2]);
     }
 
     /**
