@@ -3,12 +3,10 @@
 namespace TusPhp\Cache;
 
 use Carbon\Carbon;
+use TusPhp\Config;
 
 class FileStore extends AbstractCache
 {
-    /** @const string */
-    const DEFAULT_CACHE_FILE = 'tus_php.cache';
-
     /** @var string */
     protected $cacheDir;
 
@@ -19,11 +17,12 @@ class FileStore extends AbstractCache
      * FileStore constructor.
      *
      * @param string|null $cacheDir
-     * @param string      $cacheFile
+     * @param string|null $cacheFile
      */
-    public function __construct(string $cacheDir = null, string $cacheFile = self::DEFAULT_CACHE_FILE)
+    public function __construct(string $cacheDir = null, string $cacheFile = null)
     {
-        $cacheDir = $cacheDir ?? dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . '.cache' . DIRECTORY_SEPARATOR;
+        $cacheDir  = $cacheDir ?? Config::get('file.dir');
+        $cacheFile = $cacheFile ?? Config::get('file.name');
 
         $this->setCacheDir($cacheDir);
         $this->setCacheFile($cacheFile);

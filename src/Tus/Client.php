@@ -22,7 +22,7 @@ class Client extends AbstractTus
     protected $filePath;
 
     /** @var int */
-    protected $fileSize;
+    protected $fileSize = 0;
 
     /** @var string */
     protected $fileName;
@@ -89,7 +89,7 @@ class Client extends AbstractTus
      *
      * @return string|null
      */
-    public function getFilePath()
+    public function getFilePath() : ?string
     {
         return $this->filePath;
     }
@@ -113,7 +113,7 @@ class Client extends AbstractTus
      *
      * @return string|null
      */
-    public function getFileName()
+    public function getFileName() : ?string
     {
         return $this->fileName;
     }
@@ -121,9 +121,9 @@ class Client extends AbstractTus
     /**
      * Get file size.
      *
-     * @return int|null
+     * @return int
      */
-    public function getFileSize()
+    public function getFileSize() : int
     {
         return $this->fileSize;
     }
@@ -337,13 +337,13 @@ class Client extends AbstractTus
             'Tus-Resumable' => self::TUS_PROTOCOL_VERSION,
         ];
 
-        $headers += $this->getAdditionalHeaders();
+        $headers    += $this->getAdditionalHeaders();
 
         if ($this->isPartial()) {
             $headers += ['Upload-Concat' => 'partial'];
         }
 
-        $response = $this->getClient()->post($this->apiPath, [
+        $response   = $this->getClient()->post($this->apiPath, [
             'headers' => $headers,
         ]);
 
@@ -376,9 +376,9 @@ class Client extends AbstractTus
             'Upload-Concat' => self::UPLOAD_TYPE_FINAL . ';' . implode(' ', $partials),
             'Tus-Resumable' => self::TUS_PROTOCOL_VERSION,
         ];
-        $headers += $this->getAdditionalHeaders();
+        $headers    += $this->getAdditionalHeaders();
 
-        $response = $this->getClient()->post($this->apiPath, [
+        $response   = $this->getClient()->post($this->apiPath, [
             'headers' => $headers,
         ]);
 
@@ -462,9 +462,9 @@ class Client extends AbstractTus
             'Tus-Resumable' => self::TUS_PROTOCOL_VERSION,
         ];
 
-        $headers += $this->getAdditionalHeaders();
-
-        $response = $this->getClient()->head($this->apiPath . '/' . $key, [
+        $headers    += $this->getAdditionalHeaders();
+        
+        $response   = $this->getClient()->head($this->apiPath . '/' . $key, [
                 'headers' => $headers,
             ]);
 
@@ -549,9 +549,8 @@ class Client extends AbstractTus
             $offset   = $fileMeta['offset'];
 
             // Make sure offset is sensible.
-            if ( ! is_numeric($offset)) {
+            if ( ! is_numeric($offset))
                 $offset = 0;
-            }
 
             $this->setPartialOffset($offset);
         }
